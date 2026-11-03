@@ -8,5 +8,5 @@ services:
       - "5672:5672"     # porta que os serviços Spring usam para mandar/receber mensagens
       - "15672:15672"   # porta do painel web
     environment:
-      RABBITMQ_DEFAULT_USER: dscommerce
-      RABBITMQ_DEFAULT_PASS: dscommerce
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dscommerce}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dscommerce}
