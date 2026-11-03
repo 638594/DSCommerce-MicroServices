@@ -5,6 +5,7 @@ import com.devluiz.orderservice.services.exceptions.InvalidOrderException;
 import com.devluiz.orderservice.services.exceptions.ResourceNotFoundException;
 import com.devluiz.orderservice.services.exceptions.ServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.amqp.AmqpException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -30,6 +31,15 @@ public class ControllerExceptionHandler {
     @ExceptionHandler(ServiceUnavailableException.class)
     public ResponseEntity<CustomError> unavailable(ServiceUnavailableException e, HttpServletRequest request) {
         return ResponseEntity.status(503).body(new CustomError(503, e.getMessage(), request.getRequestURI()));
+    }
+
+    // NOVO na etapa 3: RabbitMQ fora do ar na hora de publicar a mensagem.
+    // Como a exceção sai de dentro do @Transactional, o pedido NÃO é salvo:
+    // assim nunca fica um pedido sem a mensagem de pagamento correspondente.
+    @ExceptionHandler(AmqpException.class)
+    public ResponseEntity<CustomError> messaging(AmqpException e, HttpServletRequest request) {
+        CustomError err = new CustomError(503, "Serviço de mensagens indisponível. Tente novamente em instantes.", request.getRequestURI());
+        return ResponseEntity.status(503).body(err);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

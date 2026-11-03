@@ -34,6 +34,9 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
+    // NOVO na etapa 3: preenchido quando chega a mensagem "pagamento confirmado"
+    private Instant paymentMoment;
+
     // cascade ALL: salvar o pedido já salva os itens junto
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
@@ -70,6 +73,14 @@ public class Order {
 
     public void setStatus(OrderStatus status) {
         this.status = status;
+    }
+
+    public Instant getPaymentMoment() {
+        return paymentMoment;
+    }
+
+    public void setPaymentMoment(Instant paymentMoment) {
+        this.paymentMoment = paymentMoment;
     }
 
     public List<OrderItem> getItems() {

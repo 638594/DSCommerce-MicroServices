@@ -13,6 +13,7 @@ public record OrderDTO(
         Long id,
         Instant moment,
         OrderStatus status,
+        Instant paymentMoment,
         List<Item> items,
         BigDecimal total
 ) {
@@ -22,6 +23,7 @@ public record OrderDTO(
                 entity.getId(),
                 entity.getMoment(),
                 entity.getStatus(),
+                entity.getPaymentMoment(),
                 entity.getItems().stream().map(Item::new).toList(),
                 entity.getTotal()
         );
