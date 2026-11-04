@@ -2,12 +2,10 @@ package com.devluiz.paymentservice.services;
 
 import com.devluiz.paymentservice.entities.Payment;
 import com.devluiz.paymentservice.messaging.OrderCreatedEvent;
-import com.devluiz.paymentservice.messaging.PaymentConfirmedEvent;
-import com.devluiz.paymentservice.messaging.RabbitConfig;
+import com.devluiz.paymentservice.messaging.PaymentEventPublisher;
 import com.devluiz.paymentservice.repositories.PaymentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,14 +19,21 @@ public class PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
-    @Autowired
-    private PaymentRepository paymentRepository;
+    private final PaymentRepository paymentRepository;
 
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
+    // O service não conhece o RabbitMQ: só avisa o publisher que algo aconteceu
+    private final PaymentEventPublisher paymentEventPublisher;
 
-    @Value("${payment.simulated-delay-seconds}")
-    private long simulatedDelaySeconds;
+    private final long simulatedDelaySeconds;
+
+    // O @Value também funciona em parâmetro de construtor
+    public PaymentService(PaymentRepository paymentRepository,
+                          PaymentEventPublisher paymentEventPublisher,
+                          @Value("${payment.simulated-delay-seconds}") long simulatedDelaySeconds) {
+        this.paymentRepository = paymentRepository;
+        this.paymentEventPublisher = paymentEventPublisher;
+        this.simulatedDelaySeconds = simulatedDelaySeconds;
+    }
 
     @Transactional
     public void process(OrderCreatedEvent event) {
@@ -47,9 +52,7 @@ public class PaymentService {
         log.info("Pagamento {} aprovado para o pedido {}", payment.getId(), event.orderId());
 
         // Avisa quem estiver interessado (hoje, o order-service) que o pagamento saiu
-        PaymentConfirmedEvent confirmed = new PaymentConfirmedEvent(event.orderId(), payment.getId(), payment.getMoment());
-        rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, RabbitConfig.PAYMENT_CONFIRMED_KEY, confirmed);
-        log.info("Mensagem publicada: pagamento confirmado para o pedido {}", event.orderId());
+        paymentEventPublisher.publishPaymentConfirmed(payment);
     }
 
     @Transactional(readOnly = true)
