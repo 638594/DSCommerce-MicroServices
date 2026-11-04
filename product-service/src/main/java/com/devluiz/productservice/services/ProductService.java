@@ -7,7 +7,6 @@ import com.devluiz.productservice.entities.Category;
 import com.devluiz.productservice.entities.Product;
 import com.devluiz.productservice.repositories.CategoryRepository;
 import com.devluiz.productservice.repositories.ProductRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,11 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ProductService {
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository) {
+        this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
+    }
 
     @Transactional(readOnly = true)
     public ProductDTO findById(Long id) {

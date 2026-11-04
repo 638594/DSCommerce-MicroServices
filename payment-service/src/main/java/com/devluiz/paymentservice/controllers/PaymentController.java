@@ -2,7 +2,6 @@ package com.devluiz.paymentservice.controllers;
 
 import com.devluiz.paymentservice.entities.Payment;
 import com.devluiz.paymentservice.services.PaymentService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,8 +18,11 @@ import java.util.List;
 @RequestMapping("/payments")
 public class PaymentController {
 
-    @Autowired
-    private PaymentService paymentService;
+    private final PaymentService paymentService;
+
+    public PaymentController(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Payment>> findAll() {

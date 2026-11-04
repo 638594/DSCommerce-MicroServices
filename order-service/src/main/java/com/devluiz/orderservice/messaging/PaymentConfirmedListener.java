@@ -4,7 +4,6 @@ import com.devluiz.orderservice.services.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /*
@@ -17,8 +16,11 @@ public class PaymentConfirmedListener {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentConfirmedListener.class);
 
-    @Autowired
-    private OrderService orderService;
+    private final OrderService orderService;
+
+    public PaymentConfirmedListener(OrderService orderService) {
+        this.orderService = orderService;
+    }
 
     @RabbitListener(queues = RabbitConfig.PAYMENT_CONFIRMED_QUEUE)
     public void onPaymentConfirmed(PaymentConfirmedEvent event) {
