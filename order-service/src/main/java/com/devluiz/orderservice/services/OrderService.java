@@ -9,12 +9,15 @@ import com.devluiz.orderservice.entities.OrderItem;
 import com.devluiz.orderservice.entities.OrderStatus;
 import com.devluiz.orderservice.messaging.OrderEventPublisher;
 import com.devluiz.orderservice.repositories.OrderRepository;
+import com.devluiz.orderservice.security.CurrentUser;
+import com.devluiz.orderservice.services.exceptions.ForbiddenException;
 import com.devluiz.orderservice.services.exceptions.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.awt.*;
 import java.time.Instant;
 
 @Service
@@ -37,15 +40,21 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public OrderDTO findById(Long id) {
+    public OrderDTO findById(Long id, CurrentUser user) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado: " + id));
+
+        if (!user.admin() && !order.getClientId().equals(user.id())){
+            throw new ForbiddenException("Acesso negado: este pedido pertence a outro cliente.");
+        }
         return new OrderDTO(order);
     }
 
     @Transactional
-    public OrderDTO insert(OrderRequest request) {
+    public OrderDTO insert(OrderRequest request, CurrentUser user) {
         Order order = new Order();
+        order.setClientId(user.id());
+        order.setMoment(Instant.now());
         order.setMoment(Instant.now());
         order.setStatus(OrderStatus.WAITING_PAYMENT);
 

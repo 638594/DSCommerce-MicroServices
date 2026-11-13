@@ -11,6 +11,7 @@ import java.util.List;
 /* O que a API DEVOLVE ao consultar um pedido. */
 public record OrderDTO(
         Long id,
+        Long clientId,
         Instant moment,
         OrderStatus status,
         Instant paymentMoment,
@@ -21,6 +22,7 @@ public record OrderDTO(
     public OrderDTO(Order entity) {
         this(
                 entity.getId(),
+                entity.getClientId(),
                 entity.getMoment(),
                 entity.getStatus(),
                 entity.getPaymentMoment(),

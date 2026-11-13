@@ -1,6 +1,7 @@
 package com.devluiz.orderservice.controllers.handlers;
 
 import com.devluiz.orderservice.dto.CustomError;
+import com.devluiz.orderservice.services.exceptions.ForbiddenException;
 import com.devluiz.orderservice.services.exceptions.InvalidOrderException;
 import com.devluiz.orderservice.services.exceptions.ResourceNotFoundException;
 import com.devluiz.orderservice.services.exceptions.ServiceUnavailableException;
@@ -49,5 +50,11 @@ public class ControllerExceptionHandler {
                 .toList();
         CustomError err = new CustomError(Instant.now(), 422, "Dados invalidos", request.getRequestURI(), fields);
         return ResponseEntity.status(422).body(err);
+    }
+
+    // NOVO na etapa 4b
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<CustomError> forbidden(ForbiddenException e, HttpServletRequest request) {
+        return ResponseEntity.status(403).body(new CustomError(403, e.getMessage(), request.getRequestURI()));
     }
 }

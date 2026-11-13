@@ -15,10 +15,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-/*
- * Ainda não tem cliente (User): o pedido ganha o "clientId" na etapa 3,
- * quando o user-service existir. Pagamento entra na etapa 5.
- */
+
 @Entity
 @Table(name = "tb_order")
 public class Order {
@@ -36,6 +33,9 @@ public class Order {
 
     // NOVO na etapa 3: preenchido quando chega a mensagem "pagamento confirmado"
     private Instant paymentMoment;
+
+    // NOVO na etapa 4b: quem fez o pedido. Só o id, porque o usuário mora no user-service
+    private Long clientId;
 
     // cascade ALL: salvar o pedido já salva os itens junto
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -85,5 +85,13 @@ public class Order {
 
     public List<OrderItem> getItems() {
         return items;
+    }
+
+    public Long getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(Long clientId) {
+        this.clientId = clientId;
     }
 }
