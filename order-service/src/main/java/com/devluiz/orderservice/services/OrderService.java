@@ -79,6 +79,12 @@ public class OrderService {
     public void markAsPaid(Long orderId, Instant paymentMoment) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado: " + orderId));
+        // Só um pedido que está esperando pagamento pode virar PAID.
+        // Não lança exceção: uma exceção faria a mensagem voltar para a fila em loop.
+        if (order.getStatus() != OrderStatus.WAITING_PAYMENT) {
+            log.warn("Pedido {} está {}. Confirmação de pagamento ignorada.", orderId, order.getStatus());
+            return;
+        }
         order.setStatus(OrderStatus.PAID);
         order.setPaymentMoment(paymentMoment);
         orderRepository.save(order);

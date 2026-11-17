@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
@@ -47,6 +48,10 @@ public class ProductClient {
         catch (HttpClientErrorException.NotFound e) {
             // O product-service respondeu 404: o produto não existe
             throw new InvalidOrderException("Produto não existe: " + productId);
+        }
+        catch (HttpServerErrorException e) {
+            // O product-service respondeu, mas com erro dele (500, 502...)
+            throw new ServiceUnavailableException("Catálogo de produtos indisponível. Tente novamente em instantes.");
         }
         catch (ResourceAccessException e) {
             // Nem conseguiu conversar: product-service desligado, travado ou endereço errado
