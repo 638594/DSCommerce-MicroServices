@@ -5,6 +5,8 @@ import com.devluiz.productservice.services.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -36,5 +38,17 @@ public class ControllerExceptionHandler {
                 .toList();
         CustomError err = new CustomError(Instant.now(), 422, "Dados invalidos", request.getRequestURI(), fields);
         return ResponseEntity.status(422).body(err);
+    }
+
+    // NOVO na etapa 6b: sem token, token inválido ou expirado (vem da segurança, repassado pelo SecurityConfig)
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<CustomError> unauthorized(AuthenticationException e, HttpServletRequest request) {
+        return ResponseEntity.status(401).body(new CustomError(401, "Token ausente, inválido ou expirado", request.getRequestURI()));
+    }
+
+    // NOVO na etapa 6b: token válido, mas sem permissão (ex.: cliente tentando criar produto)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<CustomError> accessDenied(AccessDeniedException e, HttpServletRequest request) {
+        return ResponseEntity.status(403).body(new CustomError(403, "Acesso negado", request.getRequestURI()));
     }
 }
