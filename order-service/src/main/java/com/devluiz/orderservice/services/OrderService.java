@@ -14,6 +14,8 @@ import com.devluiz.orderservice.services.exceptions.ForbiddenException;
 import com.devluiz.orderservice.services.exceptions.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,5 +91,11 @@ public class OrderService {
         order.setPaymentMoment(paymentMoment);
         orderRepository.save(order);
         log.info("Pedido {} marcado como PAID", orderId);
+    }
+
+    // Os pedidos de quem está logado, mais recentes primeiro
+    @Transactional(readOnly = true)
+    public Page<OrderDTO> findMine(CurrentUser user, Pageable pageable) {
+        return orderRepository.findByClientId(user.id(), pageable).map(OrderDTO::new);
     }
 }
