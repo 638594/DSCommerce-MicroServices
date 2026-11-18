@@ -22,13 +22,12 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/payments/**").hasRole("ADMIN")
-                        .requestMatchers("/h2-console/**").permitAll()
+             //         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
-                .headers(h -> h.frameOptions(f -> f.sameOrigin()))
-                // NOVO na etapa 6b: em vez de responder sozinho, o Spring Security
-                // repassa o 401 e o 403 para o ControllerExceptionHandler
+             // .headers(h -> h.frameOptions(f -> f.sameOrigin()))
+                // Em vez de responder sozinho, o Spring Security repassa o 401 e o 403 para o ControllerExceptionHandler
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) -> resolver.resolveException(req, res, null, e))
                         .accessDeniedHandler((req, res, e) -> resolver.resolveException(req, res, null, e)))

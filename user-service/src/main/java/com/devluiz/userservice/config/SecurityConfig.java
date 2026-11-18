@@ -33,7 +33,6 @@ public class SecurityConfig {
                         // A chave PÚBLICA é pública mesmo: os outros serviços vão buscá-la aqui
                         .requestMatchers(HttpMethod.GET, "/.well-known/jwks.json").permitAll()
                         .requestMatchers("/error").permitAll()
-                        // Todo o resto exige token
                         .anyRequest().authenticated()
                 )
                 // NOVO na etapa 6b: em vez de responder sozinho, o Spring Security

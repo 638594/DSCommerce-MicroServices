@@ -25,12 +25,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/products/**").hasRole("ADMIN")
-                        .requestMatchers("/h2-console/**").permitAll()
+            //          .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
 
                 )
-                .headers(h ->h.frameOptions(f -> f.sameOrigin()))
+            //    .headers(h ->h.frameOptions(f -> f.sameOrigin()))
             // em vez de responder sozinho, o Spring Security
             // repassa o 401 e o 403 para o ControllerExceptionHandler
                 .exceptionHandling(ex -> ex
