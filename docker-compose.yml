@@ -1,12 +1,76 @@
-# Sobe o RabbitMQ com um comando: docker compose up -d
-# Painel web: http://localhost:15672  (usuário: dscommerce / senha: dscommerce)
+# Etapa 7a: RabbitMQ + um PostgreSQL para cada serviço.
+#
+#   docker compose up -d     -> sobe tudo em segundo plano
+#   docker compose down      -> para tudo (os DADOS continuam salvos nos volumes)
+#   docker compose down -v   -> para tudo e APAGA os dados (volta ao zero)
+#
+# Os serviços Spring ainda rodam no IntelliJ e se conectam pelas portas abaixo.
+
 services:
   rabbitmq:
     image: rabbitmq:4-management
     container_name: dscommerce-rabbitmq
     ports:
       - "5672:5672"     # porta que os serviços Spring usam para mandar/receber mensagens
-      - "15672:15672"   # porta do painel web
+      - "15672:15672"   # painel web: http://localhost:15672
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dscommerce}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dscommerce}
+
+  # Um banco por serviço: cada um é dono dos seus dados.
+  # Porta da esquerda = na sua máquina; porta da direita = dentro do container (sempre 5432).
+  product-db:
+    image: postgres:17-alpine
+    container_name: dscommerce-product-db
+    ports:
+      - "5441:5432"
+    environment:
+      POSTGRES_DB: productdb
+      POSTGRES_USER: productsvc
+      POSTGRES_PASSWORD: productsvc
+    volumes:
+      - product-data:/var/lib/postgresql/data
+
+  order-db:
+    image: postgres:17-alpine
+    container_name: dscommerce-order-db
+    ports:
+      - "5442:5432"
+    environment:
+      POSTGRES_DB: orderdb
+      POSTGRES_USER: ordersvc
+      POSTGRES_PASSWORD: ordersvc
+    volumes:
+      - order-data:/var/lib/postgresql/data
+
+  payment-db:
+    image: postgres:17-alpine
+    container_name: dscommerce-payment-db
+    ports:
+      - "5443:5432"
+    environment:
+      POSTGRES_DB: paymentdb
+      POSTGRES_USER: paymentsvc
+      POSTGRES_PASSWORD: paymentsvc
+    volumes:
+      - payment-data:/var/lib/postgresql/data
+
+  user-db:
+    image: postgres:17-alpine
+    container_name: dscommerce-user-db
+    ports:
+      - "5444:5432"
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: usersvc
+      POSTGRES_PASSWORD: usersvc
+    volumes:
+      - user-data:/var/lib/postgresql/data
+
+# Volumes: onde o Docker guarda os arquivos de cada banco, fora dos containers.
+# É isso que faz os dados sobreviverem a um "docker compose down".
+volumes:
+  product-data:
+  order-data:
+  payment-data:
+  user-data:
