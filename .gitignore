@@ -1,2 +1,8 @@
 # Segredos locais: NUNCA vão para o Git
 secrets/
+# Configurações da IDE (são de cada máquina)
+.idea/
+*.iml
+
+# Metadados que o Windows cria em arquivos baixados
+*:Zone.Identifier
