@@ -1,24 +1,37 @@
-# Etapa 7a: RabbitMQ + um PostgreSQL para cada serviço.
+# Etapa 7b: o sistema inteiro com um comando.
 #
-#   docker compose up -d     -> sobe tudo em segundo plano
-#   docker compose down      -> para tudo (os DADOS continuam salvos nos volumes)
-#   docker compose down -v   -> para tudo e APAGA os dados (volta ao zero)
+#   docker compose up -d --build   -> compila as imagens e sobe tudo em segundo plano
+#   docker compose ps              -> mostra o estado de cada container
+#   docker compose logs -f order-service   -> acompanha o log de um serviço
+#   docker compose down            -> para tudo (os DADOS continuam nos volumes)
+#   docker compose down -v         -> para tudo e APAGA os dados
 #
-# Os serviços Spring ainda rodam no IntelliJ e se conectam pelas portas abaixo.
+# Dentro do Docker, os containers se encontram pelo NOME do serviço:
+# o order-service chama "http://product-service:8081", e não "localhost".
 
 services:
+
+  # ==================== Infraestrutura ====================
+
   rabbitmq:
     image: rabbitmq:4-management
     container_name: dscommerce-rabbitmq
+    # As portas da infraestrutura (RabbitMQ e bancos) continuam abertas na sua máquina
+    # para você poder rodar um serviço pelo IntelliJ quando quiser depurar.
     ports:
-      - "5672:5672"     # porta que os serviços Spring usam para mandar/receber mensagens
+      - "5672:5672"     # mensagens
       - "15672:15672"   # painel web: http://localhost:15672
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dscommerce}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dscommerce}
+    # healthcheck: o Docker pergunta periodicamente "você está pronto?".
+    # Os serviços que dependem do RabbitMQ só sobem depois da resposta "sim".
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
-  # Um banco por serviço: cada um é dono dos seus dados.
-  # Porta da esquerda = na sua máquina; porta da direita = dentro do container (sempre 5432).
   product-db:
     image: postgres:17-alpine
     container_name: dscommerce-product-db
@@ -30,6 +43,11 @@ services:
       POSTGRES_PASSWORD: productsvc
     volumes:
       - product-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U productsvc -d productdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   order-db:
     image: postgres:17-alpine
@@ -42,6 +60,11 @@ services:
       POSTGRES_PASSWORD: ordersvc
     volumes:
       - order-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ordersvc -d orderdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   payment-db:
     image: postgres:17-alpine
@@ -54,6 +77,11 @@ services:
       POSTGRES_PASSWORD: paymentsvc
     volumes:
       - payment-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paymentsvc -d paymentdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   user-db:
     image: postgres:17-alpine
@@ -66,9 +94,82 @@ services:
       POSTGRES_PASSWORD: usersvc
     volumes:
       - user-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U usersvc -d userdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-# Volumes: onde o Docker guarda os arquivos de cada banco, fora dos containers.
-# É isso que faz os dados sobreviverem a um "docker compose down".
+  # ==================== Serviços ====================
+  # Nenhum serviço tem "ports": eles só são acessíveis pela rede interna do Docker.
+  # A única porta aberta para fora é a do gateway.
+
+  user-service:
+    build: ./user-service
+    container_name: dscommerce-user-service
+    environment:
+      DB_URL: jdbc:postgresql://user-db:5432/userdb
+      JWT_PRIVATE_KEY_LOCATION: file:/run/secrets/jwt-private.pem
+    volumes:
+      # A chave privada fica num arquivo da sua máquina (fora do Git) e é montada só para leitura
+      - ./secrets/jwt-private.pem:/run/secrets/jwt-private.pem:ro
+    depends_on:
+      user-db:
+        condition: service_healthy
+
+  product-service:
+    build: ./product-service
+    container_name: dscommerce-product-service
+    environment:
+      DB_URL: jdbc:postgresql://product-db:5432/productdb
+      JWKS_URI: http://user-service:8084/.well-known/jwks.json
+    depends_on:
+      product-db:
+        condition: service_healthy
+
+  order-service:
+    build: ./order-service
+    container_name: dscommerce-order-service
+    environment:
+      DB_URL: jdbc:postgresql://order-db:5432/orderdb
+      JWKS_URI: http://user-service:8084/.well-known/jwks.json
+      PRODUCT_SERVICE_URL: http://product-service:8081
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      order-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  payment-service:
+    build: ./payment-service
+    container_name: dscommerce-payment-service
+    environment:
+      DB_URL: jdbc:postgresql://payment-db:5432/paymentdb
+      JWKS_URI: http://user-service:8084/.well-known/jwks.json
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      payment-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  gateway:
+    build: ./gateway
+    container_name: dscommerce-gateway
+    ports:
+      - "8080:8080"   # a ÚNICA porta de serviço aberta para fora
+    environment:
+      USER_SERVICE_URL: http://user-service:8084
+      PRODUCT_SERVICE_URL: http://product-service:8081
+      ORDER_SERVICE_URL: http://order-service:8082
+      PAYMENT_SERVICE_URL: http://payment-service:8083
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+      - payment-service
+
 volumes:
   product-data:
   order-data:
