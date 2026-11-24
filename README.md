@@ -62,7 +62,8 @@ Cada serviço tem o **seu próprio banco PostgreSQL** e não acessa as tabelas d
 - **Consumidor idempotente.** O payment-service ignora mensagens repetidas (`orderId` único), porque o RabbitMQ garante entrega "pelo menos uma vez".
 - **Esquema versionado com Flyway.** As tabelas são criadas por scripts SQL versionados em cada serviço, e o Hibernate apenas valida o mapeamento (`ddl-auto=validate`).
 - **Erros em formato único.** Todos os erros da API, inclusive os `401` e `403` do Spring Security, seguem o mesmo JSON.
-- **Configuração por variável de ambiente.** Credenciais e endereços têm valores padrão apenas para desenvolvimento local.
+- **Configuração por variável de ambiente.** Credenciais e endereços têm valores padrão apenas para desenvolvimento local; o Docker Compose troca os endereços pelos nomes dos containers sem mudar o código.
+- **Só o gateway é exposto.** Os serviços ficam na rede interna do Docker, rodam com um usuário sem privilégios, e a chave de assinatura dos tokens é montada como arquivo somente leitura, fora da imagem e fora do Git.
 
 ## Fluxo de um pedido
 
@@ -79,31 +80,41 @@ O cliente recebe a resposta assim que o pedido é salvo. O pagamento acontece de
 | Comunicação | RestClient (HTTP), Spring AMQP com RabbitMQ |
 | Gateway | Spring Cloud Gateway (Web MVC) |
 | Dados | PostgreSQL 17, Flyway |
-| Infraestrutura | Docker Compose, Maven |
+| Infraestrutura | Docker (build em dois estágios), Docker Compose, Maven |
 
 ## Como rodar
 
-**Pré-requisitos:** Java 21 e Docker.
+**Pré-requisitos:** Docker e OpenSSL. Não é preciso ter Java instalado: os serviços são compilados dentro do Docker.
 
 ```bash
 # 1. Clonar o repositório
 git clone https://github.com/638594/dscommerce-microservices.git
 cd dscommerce-microservices
 
-# 2. Subir o RabbitMQ e os 4 bancos PostgreSQL
-docker compose up -d
+# 2. Gerar a chave privada que assina os tokens (uma vez só; a pasta secrets/ não vai para o Git)
+mkdir -p secrets
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out secrets/jwt-private.pem
+chmod 644 secrets/jwt-private.pem
 
-# 3. Subir cada serviço (um terminal por serviço, ou pela IDE)
-cd user-service    && ./mvnw spring-boot:run
-cd product-service && ./mvnw spring-boot:run
-cd order-service   && ./mvnw spring-boot:run
-cd payment-service && ./mvnw spring-boot:run
-cd gateway         && ./mvnw spring-boot:run
+# 3. Compilar as imagens e subir o sistema inteiro
+docker compose up -d --build
 ```
 
-Na primeira inicialização, o Flyway cria as tabelas e os dados de exemplo de cada banco. Os dados ficam salvos em volumes do Docker; para começar do zero, use `docker compose down -v`.
+Na primeira execução, o build baixa as dependências do Maven e leva alguns minutos. Na primeira inicialização, o Flyway cria as tabelas e os dados de exemplo de cada banco.
+
+A API fica disponível em `http://localhost:8080`, a única porta de serviço exposta. Os dados ficam salvos em volumes do Docker; para começar do zero, use `docker compose down -v`.
+
+| Comando | O que faz |
+|---|---|
+| `docker compose ps` | Estado de cada container |
+| `docker compose logs -f order-service` | Acompanha o log de um serviço |
+| `docker compose down` | Para tudo, mantendo os dados |
 
 Painel do RabbitMQ: http://localhost:15672 (usuário `dscommerce`, senha `dscommerce`).
+
+### Rodando um serviço pela IDE
+
+Para depurar um serviço, pare o container dele (`docker compose stop order-service`) e rode-o pela IDE. As portas dos bancos (5441 a 5444) e do RabbitMQ (5672) ficam abertas na máquina local para isso, e os valores padrão do `application.properties` apontam para `localhost`.
 
 ### Testando com o Postman
 
@@ -154,7 +165,7 @@ Formato de todos os erros:
 - [x] API Gateway como porta única de entrada
 - [x] Erros padronizados, inclusive os de segurança, e listagem dos pedidos do cliente
 - [x] PostgreSQL por serviço e esquemas versionados com Flyway
-- [ ] Serviços em containers: Dockerfile por serviço, tudo com um `docker compose up` e só o gateway exposto
+- [x] Serviços em containers: Dockerfile por serviço, tudo com um `docker compose up` e só o gateway exposto
 - [ ] Revisão de código: acesso a pedidos de terceiros como `404`, `sub` do token como id, limites no pedido
 - [ ] Testes automatizados (unitários e com Testcontainers) e CI no GitHub Actions
 - [ ] Resiliência: pagamento recusado com cancelamento do pedido (saga), Transactional Outbox, Dead Letter Queue e circuit breaker
@@ -164,10 +175,9 @@ Formato de todos os erros:
 
 ## Limitações conhecidas
 
-- Os serviços ainda rodam fora do Docker, e as portas de todos ficam acessíveis na máquina local.
-- A chave RSA é gerada na inicialização do user-service; reiniciá-lo invalida os tokens já emitidos.
 - O evento é publicado dentro da transação do pedido, sem Outbox: uma falha entre a publicação e o commit pode gerar inconsistência.
 - O pagamento é simulado e sempre aprovado.
+- Ainda não há testes automatizados nem pipeline de CI.
 
 ## Autor
 
