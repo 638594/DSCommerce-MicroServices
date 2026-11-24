@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.ServerResponse;
 
+import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.preserveHostHeader;
 import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.uri;
 import static org.springframework.cloud.gateway.server.mvc.handler.GatewayRouterFunctions.route;
 import static org.springframework.cloud.gateway.server.mvc.handler.HandlerFunctions.http;
@@ -33,6 +34,7 @@ public class RoutesConfig {
                 // Login e dados do usuário moram no mesmo serviço: uma rota com dois caminhos
                 .route(path("/auth/**").or(path("/users/**")), http())
                 .before(uri(userUrl))
+                .before(preserveHostHeader())
                 .build();
     }
 
@@ -41,6 +43,7 @@ public class RoutesConfig {
         return route("product-service")
                 .route(path("/products/**"), http())
                 .before(uri(productUrl))
+                .before(preserveHostHeader())
                 .build();
     }
 
@@ -49,6 +52,7 @@ public class RoutesConfig {
         return route("order-service")
                 .route(path("/orders/**"), http())
                 .before(uri(orderUrl))
+                .before(preserveHostHeader())
                 .build();
     }
 
@@ -57,6 +61,7 @@ public class RoutesConfig {
         return route("payment-service")
                 .route(path("/payments/**"), http())
                 .before(uri(paymentUrl))
+                .before(preserveHostHeader())
                 .build();
     }
 }
